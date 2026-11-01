@@ -21,6 +21,14 @@ Egg → Slime → Shroomling → Bat → Frog → Cat → Owl → Boar → Bear 
 
 Two touching critters of the same tier merge into the next one. Two Dragons vanish together for a 300 point bonus ("Dragon ascends").
 
+**Golden Eggs**
+
+After the first 15 drops, about 1 in 22 pieces is a Golden Egg. It merges with the first critter it touches, up to a Boar, and that merge scores double. Touch anything bigger and it cracks into a plain Egg.
+
+**Dragon's Breath**
+
+Hatching a Dragon incinerates the six smallest critters in the jar, 5 points each, which buys room to keep going.
+
 **Scoring**
 
 Merging into tier *n* scores the triangular series 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66. Merges within 0.9 s of each other chain a combo. Each combo step adds 25%.
@@ -31,7 +39,7 @@ A settled critter sitting above the dashed danger line for about 1.1 s ends the 
 
 **Sharing**
 
-The result card has a Share button. On phones it opens the share sheet. On desktop it copies a text card like this:
+The result screen renders a 1080x1350 PNG card (background, top critter, score, chain). On phones Share hands the image plus text to the share sheet. On desktop it copies the text and "Save card" downloads the PNG. The text looks like this:
 
 ```
 Hatchpile #12
@@ -71,7 +79,14 @@ No build step. Upload the folder to GitHub Pages, Cloudflare Pages, Netlify or a
 
 ## Art credits
 
-All 11 critter sprites in `assets/c00.png` through `assets/c10.png` were generated with [PixelLab](https://pixellab.ai) using `create_object_pro_flash` with the Egg as the shared style anchor. Sprites are trimmed to their visible pixels at load time so the physics circle matches what you see.
+Everything in `assets/` was generated with [PixelLab](https://pixellab.ai):
+
+- `c00.png` to `c10.png` and `gold.png`: `create_object_pro_flash`, with the Egg as the shared style anchor. Sprites are trimmed to their visible pixels at load time so the physics circle matches what you see.
+- `bg.png`: the wizard's hatchery backdrop, `create_image_pixflux` at 220x380, drawn at 2x.
+- `hatchpile.ttf`: the UI font, `create_font` (16px, bold).
+- `panel.png`: the title-screen frame, `create_ui_asset`, used as a CSS border-image.
+
+Music and sound effects are synthesized in WebAudio at runtime.
 
 ## License
 
