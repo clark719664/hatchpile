@@ -1,0 +1,23 @@
+{
+  "name": "hatchpile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Drop eggs. Merge critters. Hatch the Dragon.",
+  "license": "MIT",
+  "scripts": {
+    "serve": "python -m http.server 8741",
+    "build:web": "node scripts/build-web.mjs",
+    "android:sync": "npm run build:web && cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.0"
+  }
+}

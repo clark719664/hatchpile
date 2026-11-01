@@ -116,6 +116,7 @@ button.ghost:active{transform:translateY(2px)}
 if (!window.Matter) { document.body.innerHTML = '<p style="padding:40px;text-align:center;font-family:sans-serif;color:#fff">Hatchpile could not load its physics engine. Please reload.</p>'; return; }
 const { Engine, Bodies, Body, Composite, Events } = Matter;
 
+const SHARE_URL = 'https://clark719664.github.io/hatchpile/';
 const W = 440, H = 760;
 const JAR = { l: 30, r: 410, top: 178, floor: 700 };
 const DANGER_Y = 198, SPAWN_Y = 118, EPOCH = Date.UTC(2026, 9, 31);
@@ -410,7 +411,7 @@ function chainText(top) { return TIERS.map((t, i) => i <= top ? t.emoji : '⬛')
 function shareText() {
   const st = streakNow(), head = mode === 'daily' ? `Hatchpile #${dailyNo}${st >= 2 ? ` 🔥${st}` : ''}` : 'Hatchpile ∞';
   const line2 = maxTier === TOP ? '🐉 Dragon hatched!' : `Top critter: ${TIERS[maxTier].emoji} ${TIERS[maxTier].name}`;
-  return `${head}\n${line2}\nScore ${score.toLocaleString()} · ${merges} merges\n${chainText(maxTier)}\n${location.href.split(/[#?]/)[0]}`;
+  return `${head}\n${line2}\nScore ${score.toLocaleString()} · ${merges} merges\n${chainText(maxTier)}\n${SHARE_URL}`;
 }
 function drawSprite(c, tier, x, y, size, alpha = 1) {
   const img = spr(tier); c.save(); c.globalAlpha = alpha; c.imageSmoothingEnabled = false;
@@ -438,7 +439,7 @@ async function renderCard() {
   x.font = `600 40px ${FONT}`; x.fillStyle = '#fff3e0cc'; x.fillText(`${merges} merges`, 540, 1040);
   const slot = 940 / TIERS.length;
   for (let i = 0; i < TIERS.length; i++) { const cx = 70 + slot * (i + .5); if (i <= maxTier) drawSprite(x, i, cx, 1140, 72); else { x.fillStyle = '#ffffff18'; x.beginPath(); x.arc(cx, 1140, 30, 0, 7); x.fill(); } }
-  x.font = `600 34px ${FONT}`; x.fillStyle = '#ffb347'; x.fillText(location.host || 'hatchpile', 540, 1245);
+  x.font = `600 34px ${FONT}`; x.fillStyle = '#ffb347'; x.fillText('clark719664.github.io/hatchpile', 540, 1245);
   return c;
 }
 async function share() {

@@ -2,90 +2,101 @@
 
 **Drop eggs. Merge critters. Hatch the Dragon.**
 
-A Suika-style physics merge puzzle in a single `index.html`. Phone-first, plays with touch, mouse or keyboard, and ships a new shared puzzle every day.
+A cozy physics merge puzzle with a new shared puzzle every day. It runs in any browser and as an Android app, from the same code.
+
+<p align="center">
+  <img src="docs/screenshot-game.png" width="260" alt="Mid-game in the wizard's hatchery">
+  <img src="docs/screenshot-card.png" width="260" alt="The shareable result card">
+</p>
 
 ## Play
 
-Open `index.html` from any static host (see below). Pick **Daily** or **Endless**, aim, drop, merge.
+- **Web:** https://clark719664.github.io/hatchpile/ (installable, works offline after the first visit)
+- **Android:** download `Hatchpile.apk` from the [latest release](https://github.com/clark719664/hatchpile/releases/latest)
+
+### Installing the APK
+
+1. Open the release page on your phone and download `Hatchpile.apk`.
+2. Open the file. Android will ask to allow installs from your browser or file manager. Allow it once.
+3. Tap Install.
+
+The APK is signed with the project's release key. SHA-256 of the current build:
+
+```
+b7e612dd8b2cb1c0817f9bff75d5a28fc01b08dcb4070850db699bdd54dbd5ff
+```
+
+Requires Android 6.0 or newer. The app requests no permissions at all, not even internet access, and works fully offline.
 
 ## How it works
 
+Drop critters into the jar. Two touching critters of the same kind merge into the next one up:
+
+> Egg → Slime → Shroomling → Bat → Frog → Cat → Owl → Boar → Bear → Golem → **Dragon**
+
 **Modes**
 
-- **Daily**: everyone gets the same egg sequence that day, seeded from the local date. Numbered from #1 on 2026-10-31. Your best for the day is kept.
-- **Endless**: a fresh random sequence every run.
+- **Daily:** everyone gets the same egg sequence that day, seeded from the local date. Numbered from #1 on 2026-10-31. Finish runs on consecutive days to build a streak.
+- **Endless:** a fresh random sequence every run.
 
-**Evolution chain** (11 tiers)
+**Scoring.** Merging into tier *n* scores the triangular series 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66. Merges within 0.9 seconds of each other chain a combo, and each step adds 25%.
 
-Egg → Slime → Shroomling → Bat → Frog → Cat → Owl → Boar → Bear → Golem → Dragon
+**Golden Eggs.** After the first 15 drops, about 1 in 22 pieces is a Golden Egg. It merges with the first critter it touches, up to a Boar, and that merge scores double. Touch anything bigger and it cracks into a plain Egg.
 
-Two touching critters of the same tier merge into the next one. Two Dragons vanish together for a 300 point bonus ("Dragon ascends").
+**Dragon's Breath.** Hatching a Dragon incinerates the six smallest critters in the jar for 5 points each. Two Dragons touching vanish together for 300 points ("Dragon ascends").
 
-**Golden Eggs**
+**Game over.** A settled critter above the dashed danger line for about 1.1 seconds ends the run. The jar then collapses and the result screen renders a 1080x1350 share card.
 
-After the first 15 drops, about 1 in 22 pieces is a Golden Egg. It merges with the first critter it touches, up to a Boar, and that merge scores double. Touch anything bigger and it cracks into a plain Egg.
-
-**Dragon's Breath**
-
-Hatching a Dragon incinerates the six smallest critters in the jar, 5 points each, which buys room to keep going.
-
-**Scoring**
-
-Merging into tier *n* scores the triangular series 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66. Merges within 0.9 s of each other chain a combo. Each combo step adds 25%.
-
-**Game over**
-
-A settled critter sitting above the dashed danger line for about 1.1 s ends the run.
-
-**Sharing**
-
-The result screen renders a 1080x1350 PNG card (background, top critter, score, chain). On phones Share hands the image plus text to the share sheet. On desktop it copies the text and "Save card" downloads the PNG. The text looks like this:
+**Sharing.** On a phone, Share sends the card image and a text result to any app. On desktop it copies the text and "Save card" downloads the PNG. The text looks like this:
 
 ```
-Hatchpile #12
+Hatchpile #12 🔥4
 Top critter: 🦉 Owl
 Score 2,340 · 31 merges
 🥚🟢🍄🦇🐸🐱🦉⬛⬛⬛⬛
-https://your-host/
+https://clark719664.github.io/hatchpile/
 ```
-
-**Critterdex, streaks and stats**
-
-Discovered critters persist in `localStorage` and show in the chain bar at the bottom of the jar and under "Critterdex & options" on the title screen. Finishing a Daily run on consecutive days builds a streak, which also appears in the share text. Dragons hatched and best combo are tracked for life.
-
-**Feel**
-
-Critters play PixelLab idle loops (blinks, breathing, wing flutters), squash when they land, stretch when they fall, and slide into each other when they merge. A ghost shows where the held piece will land. Hatching a Dragon drops the game into slow motion. On game over the jar walls fall away and everything tumbles out. The title screen runs a silent attract mode behind the menu.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Tap / drag | Aim |
-| Release | Drop |
+| Drag / move | Aim |
+| Release / click | Drop |
 | ← → | Aim |
 | Space / Enter / ↓ | Drop |
 | M | Mute everything |
 
-Music and sound effects have separate toggles under "Critterdex & options".
+Music and sound effects have separate toggles under "Critterdex & options" on the title screen. Android's back button returns to the menu.
 
 ## Run locally
 
-Any static server works. For example:
+Any static server works:
 
 ```bash
-python -m http.server 8741
+npm run serve
 ```
 
-Then open <http://localhost:8741>.
+Then open http://localhost:8741. Everything it needs, including the physics engine, is in the repo.
 
-## Deploy
+## Build the Android APK
 
-No build step. Upload the folder to GitHub Pages, Cloudflare Pages, Netlify or any static host. Matter.js loads from cdnjs and the fallback font from Google Fonts.
+You need Node 20+, JDK 21 and the Android SDK (platform 35 and build-tools).
 
-It's an installable PWA: `manifest.webmanifest` plus `sw.js`, which precaches the game and Matter.js so it keeps working offline after the first visit. Bump `VERSION` in `sw.js` when you ship a change.
+```bash
+npm install
+npm run android:sync
+cd android
+./gradlew assembleRelease
+```
 
-Set `og:image` and `twitter:image` in `index.html` to the absolute URL of `assets/og.png` once you know the host, since most link scrapers ignore relative image URLs.
+The APK lands in `android/app/build/outputs/apk/release/`. Without a signing key it is signed with the debug key, which installs fine. To sign with your own key, set `HATCHPILE_KEYSTORE` (path to a `.jks` with alias `hatchpile`) and `HATCHPILE_KS_PASS` before running Gradle.
+
+The **Android APK** GitHub Actions workflow does the same on a runner. Run it from the Actions tab and download the `Hatchpile-apk` artifact. CI builds are debug-signed unless you add `ANDROID_KEYSTORE_B64` (the keystore, base64-encoded) and `ANDROID_KEYSTORE_PASSWORD` as repository secrets. The APK on the Releases page is signed with the project's own release key, which is not stored in this repo.
+
+## Deploy the web app
+
+No build step. Serve the repo root from any static host. GitHub Pages is configured to serve `main` at the root. Bump `VERSION` in `sw.js` whenever you ship a change so installed copies refresh.
 
 ## Art credits
 
@@ -97,8 +108,8 @@ Everything in `assets/` was generated with [PixelLab](https://pixellab.ai):
 - `hatchpile.ttf`: the UI font, `create_font` (16px, bold).
 - `panel.png`: the title-screen frame, `create_ui_asset`, used as a CSS border-image.
 
-Music and sound effects are synthesized in WebAudio at runtime.
+Music and sound effects are synthesized in WebAudio at runtime. See [THIRD_PARTY.md](THIRD_PARTY.md) for the physics engine and Android wrapper licenses.
 
 ## License
 
-MIT
+[MIT](LICENSE)

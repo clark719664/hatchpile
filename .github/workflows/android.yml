@@ -1,0 +1,57 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - run: npm run build:web && npx cap sync android
+
+      # Optional: add ANDROID_KEYSTORE_B64 and ANDROID_KEYSTORE_PASSWORD as repo
+      # secrets to sign with your own key. Without them the APK is debug-signed,
+      # which installs fine but cannot update an APK signed with a different key.
+      - name: Prepare signing key
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "HATCHPILE_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          HATCHPILE_KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Name the APK and hash it
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk Hatchpile.apk
+          sha256sum Hatchpile.apk | tee Hatchpile.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hatchpile-apk
+          path: |
+            Hatchpile.apk
+            Hatchpile.apk.sha256

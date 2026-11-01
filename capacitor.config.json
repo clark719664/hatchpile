@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.clark719664.hatchpile",
+  "appName": "Hatchpile",
+  "webDir": "www",
+  "backgroundColor": "#140d22",
+  "android": {
+    "backgroundColor": "#140d22",
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "force"
+  }
+}
