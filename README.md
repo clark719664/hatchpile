@@ -49,9 +49,13 @@ Score 2,340 · 31 merges
 https://your-host/
 ```
 
-**Critterdex**
+**Critterdex, streaks and stats**
 
-Discovered critters persist in `localStorage` and show in the chain bar at the bottom of the jar.
+Discovered critters persist in `localStorage` and show in the chain bar at the bottom of the jar and under "Critterdex & options" on the title screen. Finishing a Daily run on consecutive days builds a streak, which also appears in the share text. Dragons hatched and best combo are tracked for life.
+
+**Feel**
+
+Critters play PixelLab idle loops (blinks, breathing, wing flutters), squash when they land, stretch when they fall, and slide into each other when they merge. A ghost shows where the held piece will land. Hatching a Dragon drops the game into slow motion. On game over the jar walls fall away and everything tumbles out. The title screen runs a silent attract mode behind the menu.
 
 ## Controls
 
@@ -61,7 +65,9 @@ Discovered critters persist in `localStorage` and show in the chain bar at the b
 | Release | Drop |
 | ← → | Aim |
 | Space / Enter / ↓ | Drop |
-| M | Mute |
+| M | Mute everything |
+
+Music and sound effects have separate toggles under "Critterdex & options".
 
 ## Run locally
 
@@ -86,6 +92,7 @@ Set `og:image` and `twitter:image` in `index.html` to the absolute URL of `asset
 Everything in `assets/` was generated with [PixelLab](https://pixellab.ai):
 
 - `c00.png` to `c10.png` and `gold.png`: `create_object_pro_flash`, with the Egg as the shared style anchor. Sprites are trimmed to their visible pixels at load time so the physics circle matches what you see.
+- `a00.png` to `a10.png` and `agold.png`: 9-frame idle loops from `animate_object` (v3 mode), exported through the object spritesheet endpoint and cropped to one horizontal strip each.
 - `bg.png`: the wizard's hatchery backdrop, `create_image_pixflux` at 220x380, drawn at 2x.
 - `hatchpile.ttf`: the UI font, `create_font` (16px, bold).
 - `panel.png`: the title-screen frame, `create_ui_asset`, used as a CSS border-image.

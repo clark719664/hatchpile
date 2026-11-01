@@ -276,8 +276,7 @@ function startGame(m) {
   rng = mulberry32(seed); qIndex = 0;
   engine = Engine.create({ gravity: { x: 0, y: 1.15 } });
   const wallOpts = { isStatic: true, friction: .4, label: 'wall' };
-  let floorY = JAR.floor;
-  if (m === 'demo') { try { const cr = $('menuCard').getBoundingClientRect(), r = canvas.getBoundingClientRect(); const top = (cr.top - r.top) / scale - oy; if (top > JAR.top + 90 && top < JAR.floor) floorY = top + 2; } catch {} }
+  const floorY = JAR.floor;
   walls = [
     Bodies.rectangle(JAR.l - 20, (JAR.top + JAR.floor) / 2 - 150, 40, JAR.floor - JAR.top + 500, wallOpts),
     Bodies.rectangle(JAR.r + 20, (JAR.top + JAR.floor) / 2 - 150, 40, JAR.floor - JAR.top + 500, wallOpts),
@@ -567,7 +566,7 @@ function frame(now) {
       if (b.position.y > H + 200) { Composite.remove(engine.world, b); continue; }
       if (b.tier === GOLD && Math.random() < .25) particles.push({ x: b.position.x + (Math.random() - .5) * 22, y: b.position.y + (Math.random() - .5) * 22, vx: 0, vy: -.5, life: .6, color: '#fff3b0', size: 2 + Math.random() * 2 });
       if (!running) continue;
-      const over = now - b.born > 700 && b.position.y - info(b.tier).r < (mode === 'demo' ? JAR.top - 6 : DANGER_Y) && b.speed < .6;
+      const over = now - b.born > 700 && b.position.y - info(b.tier).r < DANGER_Y && b.speed < .6;
       b.overT = over ? b.overT + dt : Math.max(0, b.overT - dt * 2);
       dangerLevel = Math.max(dangerLevel, b.overT / 1100);
       if (b.overT > 1100) endGame();
@@ -675,7 +674,6 @@ requestAnimationFrame(frame);
 const startDemo = () => { if (!mode || mode === 'demo') startGame('demo'); };
 window.addEventListener('load', () => { setTimeout(startDemo, 150); (document.fonts && document.fonts.ready || Promise.resolve()).then(() => setTimeout(startDemo, 50)); });
 if (document.readyState === 'complete') setTimeout(startDemo, 150); else setTimeout(startDemo, 1500);
-let resizeT; window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (mode === 'demo') startGame('demo'); }, 250); });
 if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
 </script>
