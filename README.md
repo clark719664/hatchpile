@@ -23,7 +23,7 @@ A cozy physics merge puzzle with a new shared puzzle every day. It runs in any b
 The APK is signed with the project's release key. SHA-256 of the current build:
 
 ```
-b7e612dd8b2cb1c0817f9bff75d5a28fc01b08dcb4070850db699bdd54dbd5ff
+93996b4df859e92c2a68dd032dbdc9fd4de6be3709384d303a56064c4ad83370
 ```
 
 Requires Android 6.0 or newer. The app requests no permissions at all, not even internet access, and works fully offline.

@@ -252,7 +252,7 @@ const music = (() => {
 
 /* ---------- state ---------- */
 let engine, mode, rng, queue, qIndex, held, aimX, canDropAt, score, best, merges, maxTier, combo, bestCombo = 0, lastMergeT, gameOver, running, dropsMade;
-let particles = [], floats = [], rings = [], ghosts = [], timers = [], pending = [], shake = 0, flash = 0, dangerLevel = 0, dailyNo = dailyNumber(), shownScore = 0, walls = [], collapseUntil = 0;
+let particles = [], floats = [], rings = [], ghosts = [], timers = [], pending = [], shake = 0, flash = 0, dangerLevel = 0, dailyNo = dailyNumber(), shownScore = 0, walls = [], collapseUntil = 0, collapseSteps = 0;
 function yesterdayKey() { const d = new Date(); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 function streakNow() { const s = store.get('streak', { count: 0, last: '' }); return (s.last === todayKey() || s.last === yesterdayKey()) ? s.count : 0; }
 const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
@@ -284,6 +284,7 @@ function startGame(m) {
   ];
   Composite.add(engine.world, walls);
   Events.on(engine, 'collisionStart', e => {
+    if (!running) return;
     for (const { bodyA: a, bodyB: b } of e.pairs) {
       const sp = Math.hypot(a.velocity.x - b.velocity.x, a.velocity.y - b.velocity.y);
       for (const c of [a, b]) if (c.label === 'critter' && sp > 2.5) {
@@ -301,7 +302,7 @@ function startGame(m) {
   queue = [nextTier(), nextTier()];
   held = queue.shift(); queue.push(nextTier());
   aimX = W / 2; canDropAt = 0; score = 0; merges = 0; maxTier = 0; combo = 0; bestCombo = 0; lastMergeT = -1e9; gameOver = false; running = true; dropsMade = 0;
-  particles = []; floats = []; rings = []; ghosts = []; timers = []; pending = []; hatchGold = []; shake = 0; flash = 0; dangerLevel = 0; shownScore = 0; collapseUntil = 0;
+  particles = []; floats = []; rings = []; ghosts = []; timers = []; pending = []; hatchGold = []; shake = 0; flash = 0; dangerLevel = 0; shownScore = 0; collapseUntil = 0; collapseSteps = 0;
   best = store.get(m === 'daily' ? 'best_daily_' + todayKey() : 'best_endless', 0);
   if (m === 'demo') return;
   store.set('games', store.get('games', 0) + 1);
@@ -329,6 +330,7 @@ function unlock(t) {
   floats.push({ x: W / 2, y: 300, text: `NEW: ${TIERS[t].name.toUpperCase()}!`, life: 1.8, color: '#7ee0a0', size: 26 });
 }
 function dragonsBreath() {
+  if (!running) return;
   const victims = critters().filter(b => !b.dead && b.tier !== TOP).sort((a, b) => (a.tier === GOLD ? -1 : a.tier) - (b.tier === GOLD ? -1 : b.tier)).slice(0, 6);
   if (!victims.length) return;
   sfx.breath(); shake = Math.max(shake, 12); flash = .6;
@@ -381,7 +383,7 @@ function processMerges() {
 function endGame() {
   if (gameOver) return;
   gameOver = true; running = false; shake = 10;
-  collapseUntil = performance.now() + 1700; engine.timing.timeScale = 1;
+  collapseUntil = performance.now() + 1700; collapseSteps = 0; engine.timing.timeScale = 1;
   for (const w of walls) Composite.remove(engine.world, w);
   if (mode === 'demo') { setTimeout(() => { if (mode === 'demo' && !$('menu').classList.contains('hidden')) startGame('demo'); }, 2300); return; }
   sfx.over(); buzz([40, 60, 40]);
@@ -563,9 +565,11 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(50, now - last); last = now;
-  if (engine && (running || now < collapseUntil)) {
+  const collapsing = !running && collapseUntil > 0 && collapseSteps < 110 && now < collapseUntil + 2500;
+  if (engine && !running && !collapsing && collapseUntil > 0 && !engine.swept) { engine.swept = true; for (const b of critters()) Composite.remove(engine.world, b); }
+  if (engine && (running || collapsing)) {
     acc += dt;
-    while (acc >= 16.667) { Engine.update(engine, 16.667); acc -= 16.667; }
+    while (acc >= 16.667) { Engine.update(engine, 16.667); acc -= 16.667; if (!running) collapseSteps++; }
     processMerges();
     if (running && held == null && now >= canDropAt) { held = queue.shift(); queue.push(nextTier()); }
     if (running && mode === 'demo' && held != null && now >= canDropAt + 450) { aimX = JAR.l + 50 + rng() * (JAR.r - JAR.l - 100); drop(); }

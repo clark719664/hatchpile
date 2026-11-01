@@ -1,4 +1,4 @@
-const VERSION = 'hatchpile-v7';
+const VERSION = 'hatchpile-v8';
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'vendor/matter.min.js',
   'assets/bg.png', 'assets/gold.png', 'assets/agold.png', 'assets/panel.png', 'assets/hatchpile.ttf', 'assets/icon-192.png',
