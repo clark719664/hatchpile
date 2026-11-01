@@ -8,11 +8,12 @@
 <meta property="og:title" content="Hatchpile">
 <meta property="og:description" content="Drop eggs. Merge critters. Hatch the Dragon. A new puzzle every day.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="assets/og.png">
+<meta property="og:url" content="https://clark719664.github.io/hatchpile/">
+<meta property="og:image" content="https://clark719664.github.io/hatchpile/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Hatchpile">
 <meta name="twitter:description" content="Drop eggs. Merge critters. Hatch the Dragon. A new puzzle every day.">
-<meta name="twitter:image" content="assets/og.png">
+<meta name="twitter:image" content="https://clark719664.github.io/hatchpile/assets/og.png">
 <meta name="theme-color" content="#140d22">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,14 +21,12 @@
 <link rel="icon" href="assets/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<script src="vendor/matter.min.js"></script>
 <style>
 @font-face{font-family:'Hatchpile';src:url(assets/hatchpile.ttf) format('truetype');font-display:swap}
 :root{--bg:#140d22;--ink:#fff3e0;--gold:#ffb347;--gold2:#ffd97a;--mint:#7ee0a0;--danger:#ff5e7a;--wood:#5a3a26;--wood2:#8a5a3a}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Hatchpile','Pixelify Sans',system-ui,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Hatchpile',ui-monospace,system-ui,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,6,18,.66);padding:14px;overflow:auto}
@@ -114,7 +113,7 @@ button.ghost:active{transform:translateY(2px)}
 
 <script>
 (() => {
-if (!window.Matter) { document.body.innerHTML = '<p style="padding:40px;text-align:center;font-family:sans-serif;color:#fff">Hatchpile needs an internet connection the first time it loads.</p>'; return; }
+if (!window.Matter) { document.body.innerHTML = '<p style="padding:40px;text-align:center;font-family:sans-serif;color:#fff">Hatchpile could not load its physics engine. Please reload.</p>'; return; }
 const { Engine, Bodies, Body, Composite, Events } = Matter;
 
 const W = 440, H = 760;
@@ -132,7 +131,7 @@ const GOLD_CAP = 7; // a Golden Egg merges with anything up to a Boar; bigger cr
 let hatchGold = [];
 const info = t => t === GOLD ? GOLD_INFO : TIERS[t];
 const VALUE = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66];
-const FONT = `'Hatchpile','Pixelify Sans',sans-serif`;
+const FONT = `'Hatchpile',ui-monospace,sans-serif`;
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -292,8 +291,8 @@ function startGame(m) {
       }
       if (a.label !== 'critter' || b.label !== 'critter' || a.dead || b.dead) continue;
       if (a.tier === b.tier || a.tier === GOLD || b.tier === GOLD) {
-        const other = a.tier === GOLD ? b : a;
-        if (other.tier > GOLD_CAP) { const g = a.tier === GOLD ? a : b; g.dead = true; hatchGold.push(g); continue; }
+        const gold = a.tier === GOLD ? a : b.tier === GOLD ? b : null, other = gold === a ? b : a;
+        if (gold && other.tier > GOLD_CAP) { gold.dead = true; hatchGold.push(gold); continue; }
         a.dead = b.dead = true; pending.push([a, b]);
       }
     }
@@ -444,6 +443,15 @@ async function renderCard() {
 }
 async function share() {
   const text = shareText();
+  const cap = window.Capacitor && Capacitor.Plugins;
+  if (cap && cap.Share && cap.Filesystem && cardCanvas) {
+    try {
+      const data = cardCanvas.toDataURL('image/png').split(',')[1];
+      const f = await cap.Filesystem.writeFile({ path: 'hatchpile-card.png', data, directory: 'CACHE' });
+      await cap.Share.share({ text, files: [f.uri], dialogTitle: 'Share your Hatchpile result' });
+      return;
+    } catch (e) { if (/cancel/i.test(String((e && e.message) || e))) return; }
+  }
   try {
     if (cardCanvas && navigator.canShare) {
       const blob = await new Promise(r => cardCanvas.toBlob(r, 'image/png'));
@@ -671,10 +679,15 @@ function render(now) {
 
 refreshMenu();
 requestAnimationFrame(frame);
+{ const capApp = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
+  if (capApp && capApp.addListener) capApp.addListener('backButton', () => { const inGame = running && mode !== 'demo'; const onOver = !$('over').classList.contains('hidden'); if (inGame || onOver) { $('btnMenu').click(); } else if (!$('more').classList.contains('hidden')) { $('btnMore').click(); } else capApp.exitApp(); }); }
+if (location.hash === '#debug') window.__hp = { start: startGame, spawn(tier, x, y) { const b = makeCritter(x, y, tier); Composite.add(engine.world, b); return b.id; }, state: () => ({ score, merges, maxTier, mode, running, gameOver, scale: engine.timing.timeScale, n: critters().length, tiers: critters().map(b => b.tier).sort(), unlocked, floats: floats.map(f => f.text) }) };
 const startDemo = () => { if (!mode || mode === 'demo') startGame('demo'); };
 window.addEventListener('load', () => { setTimeout(startDemo, 150); (document.fonts && document.fonts.ready || Promise.resolve()).then(() => setTimeout(startDemo, 50)); });
 if (document.readyState === 'complete') setTimeout(startDemo, 150); else setTimeout(startDemo, 1500);
-if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+if (NATIVE) { const b = $('btnSave'); if (b) b.style.display = 'none'; }
+if ('serviceWorker' in navigator && !NATIVE && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
 </script>
 </body>

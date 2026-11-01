@@ -1,17 +1,13 @@
-const VERSION = 'hatchpile-v6';
-const MATTER = 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js';
+const VERSION = 'hatchpile-v7';
 const PRECACHE = [
-  './', 'index.html', 'manifest.webmanifest',
+  './', 'index.html', 'manifest.webmanifest', 'vendor/matter.min.js',
   'assets/bg.png', 'assets/gold.png', 'assets/agold.png', 'assets/panel.png', 'assets/hatchpile.ttf', 'assets/icon-192.png',
   ...Array.from({ length: 11 }, (_, i) => `assets/c${String(i).padStart(2, '0')}.png`),
   ...Array.from({ length: 11 }, (_, i) => `assets/a${String(i).padStart(2, '0')}.png`),
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => Promise.all([
-    c.addAll(PRECACHE),
-    fetch(MATTER, { mode: 'no-cors' }).then(res => c.put(MATTER, res)).catch(() => {}),
-  ])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
