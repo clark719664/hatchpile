@@ -75,7 +75,11 @@ Then open <http://localhost:8741>.
 
 ## Deploy
 
-No build step. Upload the folder to GitHub Pages, Cloudflare Pages, Netlify or any static host. Matter.js and the font load from CDNs.
+No build step. Upload the folder to GitHub Pages, Cloudflare Pages, Netlify or any static host. Matter.js loads from cdnjs and the fallback font from Google Fonts.
+
+It's an installable PWA: `manifest.webmanifest` plus `sw.js`, which precaches the game and Matter.js so it keeps working offline after the first visit. Bump `VERSION` in `sw.js` when you ship a change.
+
+Set `og:image` and `twitter:image` in `index.html` to the absolute URL of `assets/og.png` once you know the host, since most link scrapers ignore relative image URLs.
 
 ## Art credits
 

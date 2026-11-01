@@ -7,7 +7,19 @@
 <meta name="description" content="Drop eggs. Merge critters. Hatch the Dragon. A new puzzle every day.">
 <meta property="og:title" content="Hatchpile">
 <meta property="og:description" content="Drop eggs. Merge critters. Hatch the Dragon. A new puzzle every day.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hatchpile">
+<meta name="twitter:description" content="Drop eggs. Merge critters. Hatch the Dragon. A new puzzle every day.">
+<meta name="twitter:image" content="assets/og.png">
 <meta name="theme-color" content="#140d22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hatchpile">
+<link rel="icon" href="assets/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
@@ -180,6 +192,7 @@ const music = (() => {
   const bpm = 118, step = 60 / bpm / 2;
   let next = 0, i = 0, timer = null, started = false;
   function tick() {
+    if (next < audioCtx.currentTime - .3) next = audioCtx.currentTime + .05;
     while (next < audioCtx.currentTime + .25) {
       const s = i % 32;
       if (lead[s]) tone(midi(lead[s]), step * .8, 'square', 0.028, 1, next - audioCtx.currentTime);
@@ -193,7 +206,8 @@ const music = (() => {
 
 /* ---------- state ---------- */
 let engine, mode, rng, queue, qIndex, held, aimX, canDropAt, score, best, merges, maxTier, combo, lastMergeT, gameOver, running, dropsMade;
-let particles = [], floats = [], rings = [], timers = [], pending = [], shake = 0, flash = 0, dangerLevel = 0, dailyNo = dailyNumber();
+let particles = [], floats = [], rings = [], ghosts = [], timers = [], pending = [], shake = 0, flash = 0, dangerLevel = 0, dailyNo = dailyNumber(), shownScore = 0;
+const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
 let unlocked = store.get('unlocked', 1), cardCanvas = null;
 
 function nextTier() {
@@ -237,7 +251,8 @@ function startGame(m) {
   queue = [nextTier(), nextTier()];
   held = queue.shift(); queue.push(nextTier());
   aimX = W / 2; canDropAt = 0; score = 0; merges = 0; maxTier = 0; combo = 0; lastMergeT = -1e9; gameOver = false; running = true; dropsMade = 0;
-  particles = []; floats = []; rings = []; timers = []; pending = []; hatchGold = []; shake = 0; flash = 0; dangerLevel = 0;
+  particles = []; floats = []; rings = []; ghosts = []; timers = []; pending = []; hatchGold = []; shake = 0; flash = 0; dangerLevel = 0; shownScore = 0;
+  store.set('games', store.get('games', 0) + 1);
   best = store.get(m === 'daily' ? 'best_daily_' + todayKey() : 'best_endless', 0);
   $('menu').classList.add('hidden'); $('over').classList.add('hidden');
 }
@@ -281,6 +296,7 @@ function processMerges() {
     let tier = a.tier === GOLD ? b.tier : a.tier; if (tier === GOLD) tier = 0;
     const wild = a.tier === GOLD || b.tier === GOLD;
     const mx = (a.position.x + b.position.x) / 2, my = (a.position.y + b.position.y) / 2;
+    for (const g of [a, b]) ghosts.push({ tier: g.tier, x: g.position.x, y: g.position.y, tx: mx, ty: my, angle: g.angle, t: 0 });
     Composite.remove(engine.world, a); Composite.remove(engine.world, b);
     combo = now - lastMergeT < 900 ? combo + 1 : 1; lastMergeT = now; merges++;
     let gained;
@@ -296,8 +312,8 @@ function processMerges() {
       maxTier = Math.max(maxTier, nt); unlock(nt);
       const c = TIERS[nt].color;
       burst(mx, my, c, 10 + nt * 2, 3 + nt * .4); rings.push({ x: mx, y: my, r: TIERS[nt].r * .6, max: TIERS[nt].r * 2.2, color: c, life: 1 });
-      shake = Math.max(shake, nt >= 5 ? 3 + nt * .7 : 0); sfx.merge(nt); if (wild) sfx.gold();
-      if (nt === TOP) { flash = .8; timers.push({ at: now + 650, fn: dragonsBreath }); }
+      shake = Math.max(shake, nt >= 5 ? 3 + nt * .7 : 0); sfx.merge(nt); if (wild) sfx.gold(); buzz(nt >= 5 ? 25 : 8);
+      if (nt === TOP) { flash = .8; buzz([60, 40, 80]); timers.push({ at: now + 650, fn: dragonsBreath }); }
     }
     gained = Math.round(gained * (1 + (combo - 1) * .25));
     score += gained;
@@ -308,7 +324,7 @@ function processMerges() {
 
 function endGame() {
   if (gameOver) return;
-  gameOver = true; running = false; sfx.over(); shake = 10;
+  gameOver = true; running = false; sfx.over(); shake = 10; buzz([40, 60, 40]);
   const key = mode === 'daily' ? 'best_daily_' + todayKey() : 'best_endless';
   const isBest = score > best;
   if (isBest) { best = score; store.set(key, score); }
@@ -389,18 +405,22 @@ function refreshMenu() {
 }
 
 /* ---------- sizing + input ---------- */
-let scale = 1;
+let scale = 1, ox = 0, oy = 0, VW = W, VH = H;
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  scale = Math.min(window.innerWidth / W, window.innerHeight / H);
-  canvas.style.width = W * scale + 'px'; canvas.style.height = H * scale + 'px';
-  canvas.width = Math.round(W * scale * dpr); canvas.height = Math.round(H * scale * dpr);
-  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = window.innerWidth, h = window.innerHeight;
+  scale = Math.min(w / W, h / H);
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  VW = w / scale; VH = h / scale; ox = (VW - W) / 2; oy = (VH - H) / 2;
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, ox * scale * dpr, oy * scale * dpr);
   ctx.imageSmoothingEnabled = false;
 }
 window.addEventListener('resize', resize); resize();
-function canvasX(e) { const r = canvas.getBoundingClientRect(); return (e.clientX - r.left) / scale; }
-function canvasY(e) { const r = canvas.getBoundingClientRect(); return (e.clientY - r.top) / scale; }
+function canvasX(e) { const r = canvas.getBoundingClientRect(); return (e.clientX - r.left) / scale - ox; }
+function canvasY(e) { const r = canvas.getBoundingClientRect(); return (e.clientY - r.top) / scale - oy; }
+const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const buzz = p => { try { if (navigator.vibrate && !RM) navigator.vibrate(p); } catch {} };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { last = performance.now(); if (audioCtx) audioCtx.resume(); } });
 let aiming = false;
 canvas.addEventListener('pointerdown', e => {
   ensureAudio();
@@ -476,16 +496,21 @@ function frame(now) {
   floats = floats.filter(f => f.life > 0);
   for (const r of rings) { r.r += (r.max - r.r) * dt / 120; r.life -= dt / 450; }
   rings = rings.filter(r => r.life > 0);
+  for (const g of ghosts) g.t += dt;
+  ghosts = ghosts.filter(g => g.t < 110);
   shake = Math.max(0, shake - dt * .05); flash = Math.max(0, flash - dt / 350);
+  if (RM) { shake = 0; flash = 0; }
+  shownScore = Math.abs(score - shownScore) < 1 ? score : shownScore + (score - shownScore) * Math.min(1, dt / 140);
   render(now);
 }
 
 function render(now) {
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
-  if (bgImg.complete && bgImg.naturalWidth) ctx.drawImage(bgImg, -4, -4, W + 8, H + 8);
-  else { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#241a40'); g.addColorStop(1, '#120c22'); ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40); }
-  ctx.fillStyle = 'rgba(8,4,16,.28)'; ctx.fillRect(-20, -20, W + 40, H + 40);
+  const FX = -ox - 6, FY = -oy - 6, FW = VW + 12, FH = VH + 12;
+  if (bgImg.complete && bgImg.naturalWidth) { const s = Math.max(FW / bgImg.naturalWidth, FH / bgImg.naturalHeight); ctx.drawImage(bgImg, FX + (FW - bgImg.naturalWidth * s) / 2, FY + (FH - bgImg.naturalHeight * s) / 2, bgImg.naturalWidth * s, bgImg.naturalHeight * s); }
+  else { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#241a40'); g.addColorStop(1, '#120c22'); ctx.fillStyle = g; ctx.fillRect(FX, FY, FW, FH); }
+  ctx.fillStyle = 'rgba(8,4,16,.28)'; ctx.fillRect(FX, FY, FW, FH);
 
   /* glass jar */
   ctx.fillStyle = 'rgba(10,6,22,.58)'; ctx.fillRect(JAR.l, JAR.top, JAR.r - JAR.l, JAR.floor - JAR.top);
@@ -504,7 +529,7 @@ function render(now) {
 
   if (engine) for (const b of critters()) {
     const r = info(b.tier).r; let size = r * 2;
-    if (b.popped) { const age = now - b.born; if (age < 240) size *= 1 + .3 * Math.sin(age / 240 * Math.PI); }
+    if (b.popped) { const age = now - b.born; if (age < 120) size *= .25 + 1.05 * (age / 120); else if (age < 280) size *= 1.3 - .3 * ((age - 120) / 160); }
     const breathe = 1 + .012 * Math.sin(now / 420 + b.phase);
     if (b.tier === GOLD) { ctx.save(); ctx.globalAlpha = .35 + .2 * Math.sin(now / 150); ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(b.position.x, b.position.y, r + 6, 0, 7); ctx.fill(); ctx.restore(); }
     drawCritter(b.tier, b.position.x, b.position.y, b.angle, size, 1, b.squash, breathe);
@@ -527,12 +552,14 @@ function render(now) {
   for (const f of floats) { ctx.globalAlpha = Math.min(1, f.life * 2); text(f.text, f.x, f.y, f.size, f.color, 'center'); }
   ctx.globalAlpha = 1;
 
-  if (dangerLevel > 0) { const v = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .75); v.addColorStop(0, 'rgba(255,40,80,0)'); v.addColorStop(1, `rgba(255,40,80,${.55 * Math.min(1, dangerLevel) * (0.7 + 0.3 * Math.sin(now / 90))})`); ctx.fillStyle = v; ctx.fillRect(-20, -20, W + 40, H + 40); }
-  if (flash > 0) { ctx.fillStyle = `rgba(255,240,200,${flash * .55})`; ctx.fillRect(-20, -20, W + 40, H + 40); }
+  if (dangerLevel > 0) { const v = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .8); v.addColorStop(0, 'rgba(255,40,80,0)'); v.addColorStop(1, `rgba(255,40,80,${.55 * Math.min(1, dangerLevel) * (0.7 + 0.3 * Math.sin(now / 90))})`); ctx.fillStyle = v; ctx.fillRect(FX, FY, FW, FH); }
+  if (flash > 0) { ctx.fillStyle = `rgba(255,240,200,${flash * .55})`; ctx.fillRect(FX, FY, FW, FH); }
+  if (running && dropsMade === 0 && store.get('games', 0) < 3) { ctx.globalAlpha = .7 + .3 * Math.sin(now / 250); text(isTouch ? 'DRAG TO AIM · RELEASE TO DROP' : 'MOVE TO AIM · CLICK TO DROP', W / 2, 330, 18, '#ffd97a', 'center'); ctx.globalAlpha = 1; }
+  for (const g of ghosts) { const p = Math.min(1, g.t / 110), e = 1 - (1 - p) * (1 - p); drawCritter(g.tier, g.x + (g.tx - g.x) * e, g.y + (g.ty - g.y) * e, g.angle, info(g.tier).r * 2 * (1 - .5 * e), 1 - e * .6); }
 
   /* HUD */
   if (!mode) { ctx.restore(); return; }
-  text((score || 0).toLocaleString(), 22, 36, 42, '#ffd97a');
+  text(Math.round(shownScore).toLocaleString(), 22, 36, 42 + Math.min(10, (score - shownScore) / 8), '#ffd97a');
   text('BEST ' + (best || 0).toLocaleString(), 24, 68, 15, '#ffb347');
   text(mode === 'daily' ? `DAILY #${dailyNo}` : mode === 'endless' ? 'ENDLESS' : '', 24, 88, 14, '#fff3e0');
   if (running && combo > 1 && now - lastMergeT < 900) text('COMBO x' + combo, 24, 114, 22, '#ffd166');
@@ -556,6 +583,7 @@ function render(now) {
 
 refreshMenu();
 requestAnimationFrame(frame);
+if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
 </script>
 </body>
