@@ -1,9 +1,10 @@
-const VERSION = 'hatchpile-v5';
+const VERSION = 'hatchpile-v6';
 const MATTER = 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js';
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
-  'assets/bg.png', 'assets/gold.png', 'assets/panel.png', 'assets/hatchpile.ttf', 'assets/icon-192.png',
+  'assets/bg.png', 'assets/gold.png', 'assets/agold.png', 'assets/panel.png', 'assets/hatchpile.ttf', 'assets/icon-192.png',
   ...Array.from({ length: 11 }, (_, i) => `assets/c${String(i).padStart(2, '0')}.png`),
+  ...Array.from({ length: 11 }, (_, i) => `assets/a${String(i).padStart(2, '0')}.png`),
 ];
 
 self.addEventListener('install', e => {
