@@ -146,44 +146,40 @@ const pad = n => String(n).padStart(2, '0');
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 function dailyNumber() { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH) / 864e5) + 1; }
 
-function trimBox(img) {
-  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+function fitBox(img, frames) {
+  const fh = img.naturalHeight, fw = Math.round(img.naturalWidth / frames), c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = fh;
   const x = c.getContext('2d'); x.drawImage(img, 0, 0);
-  const d = x.getImageData(0, 0, c.width, c.height).data;
-  let minX = c.width, minY = c.height, maxX = -1, maxY = -1;
-  for (let py = 0; py < c.height; py++) for (let px = 0; px < c.width; px++) if (d[(py * c.width + px) * 4 + 3] > 20) {
-    if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py;
+  const d = x.getImageData(0, 0, c.width, fh).data;
+  let minX = fw, minY = fh, maxX = -1, maxY = -1, bMinX = fw, bMinY = fh, bMaxX = -1, bMaxY = -1, area = 0;
+  for (let py = 0; py < fh; py++) for (let px = 0; px < c.width; px++) if (d[(py * c.width + px) * 4 + 3] > 20) {
+    const cx = px % fw; if (cx < minX) minX = cx; if (cx > maxX) maxX = cx; if (py < minY) minY = py; if (py > maxY) maxY = py;
+    if (px < fw) { area++; if (cx < bMinX) bMinX = cx; if (cx > bMaxX) bMaxX = cx; if (py < bMinY) bMinY = py; if (py > bMaxY) bMaxY = py; }
   }
-  if (maxX < 0) return { x: 0, y: 0, s: c.width };
+  if (maxX < 0) return { x: 0, y: 0, s: fw, cx: fw / 2, cy: fh / 2, bs: fw };
+  // The physics circle is fitted to the resting pose (frame 0): a diameter between its longest side and its
+  // area-equivalent circle. Later frames (wing flaps, arm swings) are allowed to overflow it instead of shrinking it.
+  const bw = bMaxX - bMinX + 1, bh = bMaxY - bMinY + 1, bs = Math.max(.9 * Math.max(bw, bh), 2 * Math.sqrt(area / Math.PI));
   const w = maxX - minX + 1, h = maxY - minY + 1, s = Math.max(w, h);
-  return { x: minX - (s - w) / 2, y: minY - (s - h) / 2, s };
+  return { x: minX - (s - w) / 2, y: minY - (s - h) / 2, s, cx: (bMinX + bMaxX + 1) / 2, cy: (bMinY + bMaxY + 1) / 2, bs };
+}
+function blit(c, img, b, frame, x, y, size) {
+  const k = size / b.bs;
+  c.drawImage(img, frame * Math.round(img.naturalWidth / (img.frames || 1)) + b.x, b.y, b.s, b.s, x + (b.x - b.cx) * k, y + (b.y - b.cy) * k, b.s * k, b.s * k);
 }
 function loadSprite(src) {
   const img = new Image(); img.src = src;
   img.onerror = () => { img.failed = true; };
-  img.onload = () => { try { img.box = trimBox(img); } catch { img.box = { x: 0, y: 0, s: img.naturalWidth }; } };
+  img.onload = () => { try { img.box = fitBox(img, 1); } catch { img.box = null; } };
   return img;
 }
 const sprites = TIERS.map((t, i) => loadSprite(`assets/c${pad(i)}.png`));
 const goldSprite = loadSprite('assets/gold.png');
 const bgImg = new Image(); bgImg.src = 'assets/bg.png';
 const spr = t => t === GOLD ? goldSprite : sprites[t];
-function unionBox(img) {
-  const fh = img.naturalHeight, c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = fh;
-  const x = c.getContext('2d'); x.drawImage(img, 0, 0);
-  const d = x.getImageData(0, 0, c.width, fh).data;
-  let minX = fh, minY = fh, maxX = -1, maxY = -1;
-  for (let py = 0; py < fh; py++) for (let px = 0; px < c.width; px++) if (d[(py * c.width + px) * 4 + 3] > 20) {
-    const cx = px % fh; if (cx < minX) minX = cx; if (cx > maxX) maxX = cx; if (py < minY) minY = py; if (py > maxY) maxY = py;
-  }
-  if (maxX < 0) return { x: 0, y: 0, s: fh };
-  const w = maxX - minX + 1, h = maxY - minY + 1, s = Math.max(w, h);
-  return { x: minX - (s - w) / 2, y: minY - (s - h) / 2, s };
-}
 function loadSheet(src) {
   const img = new Image(); img.src = src;
   img.onerror = () => { img.failed = true; };
-  img.onload = () => { try { img.frames = Math.max(1, Math.round(img.naturalWidth / img.naturalHeight)); img.box = unionBox(img); img.ready = true; } catch { img.failed = true; } };
+  img.onload = () => { try { img.frames = Math.max(1, Math.round(img.naturalWidth / img.naturalHeight)); img.box = fitBox(img, img.frames); img.ready = true; } catch { img.failed = true; } };
   return img;
 }
 const sheets = TIERS.map((t, i) => loadSheet(`assets/a${pad(i)}.png`));
@@ -417,7 +413,7 @@ function shareText() {
 }
 function drawSprite(c, tier, x, y, size, alpha = 1) {
   const img = spr(tier); c.save(); c.globalAlpha = alpha; c.imageSmoothingEnabled = false;
-  if (img.complete && img.naturalWidth && !img.failed) { const b = img.box || { x: 0, y: 0, s: img.naturalWidth }; c.drawImage(img, b.x, b.y, b.s, b.s, x - size / 2, y - size / 2, size, size); }
+  if (img.complete && img.naturalWidth && !img.failed && img.box) blit(c, img, img.box, 0, x, y, size);
   else { c.fillStyle = info(tier).color; c.beginPath(); c.arc(x, y, size / 2, 0, 7); c.fill(); }
   c.restore();
 }
@@ -543,11 +539,9 @@ function drawCritter(tier, x, y, angle, size, alpha = 1, squash = 0, breathe = 1
   const sx = (1 + .22 * squash - .6 * stretch) * breathe, sy = (1 - .22 * squash + stretch) / breathe;
   ctx.save(); ctx.translate(x, y + size / 2 * (1 - sy)); ctx.scale(sx, sy); ctx.rotate(angle); ctx.globalAlpha = alpha;
   if (sh.ready) {
-    const f = Math.floor(((t || animNow) / FRAME_MS) % sh.frames), b = sh.box;
-    ctx.drawImage(sh, f * sh.naturalHeight + b.x, b.y, b.s, b.s, -size / 2, -size / 2, size, size);
-  } else if (img.complete && img.naturalWidth && !img.failed) {
-    const b = img.box || { x: 0, y: 0, s: img.naturalWidth };
-    ctx.drawImage(img, b.x, b.y, b.s, b.s, -size / 2, -size / 2, size, size);
+    blit(ctx, sh, sh.box, Math.floor(((t || animNow) / FRAME_MS) % sh.frames), 0, 0, size);
+  } else if (img.complete && img.naturalWidth && !img.failed && img.box) {
+    blit(ctx, img, img.box, 0, 0, 0, size);
   } else {
     ctx.fillStyle = ti.color; ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#0006'; ctx.lineWidth = 2; ctx.stroke();
@@ -686,7 +680,7 @@ refreshMenu();
 requestAnimationFrame(frame);
 { const capApp = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
   if (capApp && capApp.addListener) capApp.addListener('backButton', () => { const inGame = running && mode !== 'demo'; const onOver = !$('over').classList.contains('hidden'); if (inGame || onOver) { $('btnMenu').click(); } else if (!$('more').classList.contains('hidden')) { $('btnMore').click(); } else capApp.exitApp(); }); }
-if (location.hash === '#debug') window.__hp = { start: startGame, spawn(tier, x, y) { const b = makeCritter(x, y, tier); Composite.add(engine.world, b); return b.id; }, state: () => ({ score, merges, maxTier, mode, running, gameOver, scale: engine.timing.timeScale, n: critters().length, tiers: critters().map(b => b.tier).sort(), unlocked, floats: floats.map(f => f.text) }) };
+if (location.hash === '#debug') window.__hp = { start: startGame, spawn(tier, x, y) { const b = makeCritter(x, y, tier); Composite.add(engine.world, b); return b.id; }, fits: () => ({ ready: sheets.every(s => s.ready) && goldSheet.ready, boxes: sheets.map(s => s.box), rest: sprites.map(s => s.box) }), freeze() { engine.timing.timeScale = 0; }, circles: () => { const r = canvas.getBoundingClientRect(); return critters().map(b => ({ x: r.left + (b.position.x + ox) * scale, y: r.top + (b.position.y + oy) * scale, r: info(b.tier).r * scale })); }, state: () => ({ score, merges, maxTier, mode, running, gameOver, scale: engine.timing.timeScale, n: critters().length, tiers: critters().map(b => b.tier).sort(), unlocked, floats: floats.map(f => f.text) }) };
 const startDemo = () => { if (!mode || mode === 'demo') startGame('demo'); };
 window.addEventListener('load', () => { setTimeout(startDemo, 150); (document.fonts && document.fonts.ready || Promise.resolve()).then(() => setTimeout(startDemo, 50)); });
 if (document.readyState === 'complete') setTimeout(startDemo, 150); else setTimeout(startDemo, 1500);

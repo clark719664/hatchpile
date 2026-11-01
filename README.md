@@ -102,7 +102,7 @@ No build step. Serve the repo root from any static host. GitHub Pages is configu
 
 Everything in `assets/` was generated with [PixelLab](https://pixellab.ai):
 
-- `c00.png` to `c10.png` and `gold.png`: `create_object_pro_flash`, with the Egg as the shared style anchor. Sprites are trimmed to their visible pixels at load time so the physics circle matches what you see.
+- `c00.png` to `c10.png` and `gold.png`: `create_object_pro_flash`, with the Egg as the shared style anchor. At load time each sprite's resting pose is measured and fitted to its physics circle, so the body you see is the body that collides; idle-animation frames (wing flaps, arm swings) are allowed to overflow the circle.
 - `a00.png` to `a10.png` and `agold.png`: 9-frame idle loops from `animate_object` (v3 mode), exported through the object spritesheet endpoint and cropped to one horizontal strip each.
 - `bg.png`: the wizard's hatchery backdrop, `create_image_pixflux` at 220x380, drawn at 2x.
 - `hatchpile.ttf`: the UI font, `create_font` (16px, bold).
